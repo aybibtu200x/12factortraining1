@@ -64,7 +64,7 @@ public class WeatherModel : PageModel
                     Weather = JsonSerializer.Deserialize<Weather>(responseBody);
 
                     //System.IO.File.AppendAllText(@"./log.txt", $"{DateTime.Now:F}: weather-apiのコールに成功しました\n");
-                    _logger.LogInformation($"{DateTime.Now:F}: weather-apiのコールに成功しました\n");
+                    _logger.LogInformation($"{DateTime.Now:F}: weather-apiのコールｓに成功しました\n");
                     
                 }
             }
