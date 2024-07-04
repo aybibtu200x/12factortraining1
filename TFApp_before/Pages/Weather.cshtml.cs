@@ -4,9 +4,24 @@ public class WeatherModel : PageModel
 {
     private readonly TFAppContext _context;
 
-    public WeatherModel(TFAppContext context)
+    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IConfiguration _configuration;
+    private readonly IHttpContextAccessor _httpContextAccessor;
+
+    private readonly ILogger<RegisterModel> _logger;
+
+    public WeatherModel(
+        TFAppContext context,
+        IHttpClientFactory httpClientFactory,
+        IConfiguration configuration,
+        IHttpContextAccessor httpContextAccessor,
+        ILogger<RegisterModel> logger)
     {
         _context = context;
+        _httpClientFactory = httpClientFactory;
+        _configuration = configuration;
+        _httpContextAccessor = httpContextAccessor;
+        _logger = logger;
     }
 
     public string? UserId { get; private set; }
@@ -15,41 +30,51 @@ public class WeatherModel : PageModel
 
     public async Task OnGetAsync()
     {
-        // var session = HttpContext.Session;
-        // var key = session.GetString(RegisterModel.SessionKey);
-        // UserId = key;
+        //var session = HttpContext.Session;
+        //var key = session.GetString(RegisterModel.SessionKey);
 
-        // if (_context.User != null)
-        // {
-        //     // セッションと同じユーザーをDBから取得
-        //     var user = await _context.User.FindAsync(key);
+        var session = _httpContextAccessor.HttpContext.Session;
+        var key = session.GetString(RegisterModel.SessionKey);
 
-        //     // weather-apiをたたく
-        //     if (user != null)
-        //     {
-        //         using (var client = new HttpClient())
-        //         {
-        //             // ヘッダーにApiKeyを付与
-        //             client.DefaultRequestHeaders.Add("x-api-key", Environment.GetEnvironmentVariable("ApiKey"));
+        UserId = key;
 
-        //             var response = await client.GetAsync($"https://{your-functions-app}/api/weather/{user.City}");
+        if (_context.User != null)
+        {
+            // セッションと同じユーザーをDBから取得
+            var user = await _context.User.FindAsync(key);
 
-        //             if (response.IsSuccessStatusCode)
-        //             {
-        //                 var responseBody = await response.Content.ReadAsStringAsync();
+            // weather-apiをたたく
+            if (user != null)
+            {
+                //using (var client = new HttpClient())
+                //{
+                    // ヘッダーにApiKeyを付与
+                    //client.DefaultRequestHeaders.Add("x-api-key", Environment.GetEnvironmentVariable("ApiKey"));
 
-        //                 Weather = JsonSerializer.Deserialize<Weather>(responseBody);
+                    //var response = await client.GetAsync($"https://fnappivazwebw4yry2.azurewebsites.net/api/weather/{user.City}");
+                var client = _httpClientFactory.CreateClient("weather");
+                client.DefaultRequestHeaders.Add("x-api-key", _configuration.GetValue<string>("ApiKey"));
 
-        //                 System.IO.File.AppendAllText(@"./log.txt", $"{DateTime.Now:F}: weather-apiのコールに成功しました\n");
-        //             }
-        //         }
-        //     }
-        //     else
-        //     {
-        //         Weather = null;
+                var response = await client.GetAsync($"api/weather/{user.City}");
 
-        //         System.IO.File.AppendAllText(@"./log.txt", $"{DateTime.Now:F}: ユーザーの登録処理が失敗しました\n");
-        //     }
-        // }
+                if (response.IsSuccessStatusCode)
+                {
+                    var responseBody = await response.Content.ReadAsStringAsync();
+
+                    Weather = JsonSerializer.Deserialize<Weather>(responseBody);
+
+                    //System.IO.File.AppendAllText(@"./log.txt", $"{DateTime.Now:F}: weather-apiのコールに成功しました\n");
+                    _logger.LogInformation($"{DateTime.Now:F}: weather-apiのコールに成功しました\n");
+                    
+                }
+            }
+            else
+            {
+                Weather = null;
+
+                //System.IO.File.AppendAllText(@"./log.txt", $"{DateTime.Now:F}: ユーザーの登録処理が失敗しました\n");
+                _logger.LogInformation($"{DateTime.Now:F}: ユーザーの登録処理が失敗しました\n");
+            }
+        }
     }
 }
